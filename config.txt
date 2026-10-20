@@ -1,0 +1,18 @@
+# This is the input file. It has to contain one KEY=VALUE par per line to be parsed
+#
+# line starting with '#' must be ignored
+#
+# width and height mean the maze width and height respectively (in number of cells)
+#
+# entry and exit and the x and y coordinates for the begining and the end
+#
+# PERFECT is a boolean determined if the maze has 1 or multiple solutions (if PERFECT == True -> 1 solution)
+# 
+# aditional parameters are allowed if relevant
+
+WIDTH=20
+HEIGHT=15
+ENTRY=0,0
+EXIT=19,14
+OUTPUT_FILE=maze.txt
+PERFECT=True
