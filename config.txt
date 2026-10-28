@@ -9,7 +9,6 @@
 # PERFECT is a boolean determined if the maze has 1 or multiple solutions (if PERFECT == True -> 1 solution)
 # 
 # aditional parameters are allowed if relevant
-
 WIDTH=20
 HEIGHT=15
 ENTRY=0,0
