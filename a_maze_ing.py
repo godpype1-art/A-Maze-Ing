@@ -5,6 +5,10 @@ class ParserError(Exception):
     ...
 
 
+class MazeConfigError(Exception):
+    ...
+
+
 class Parser():
     def __init__(self) -> None:
         self._maze_config: dict[str, str] = {}
@@ -68,30 +72,20 @@ class Parser():
 
 
     def set_data(self) -> None:
-        try:
-            self._width = int(self._maze_config["WIDTH"])
-            self._height = int(self._maze_config["HEIGHT"])
-            x, y = self._maze_config["ENTRY"].split(",", 1)
-            if not x or not y:
-                raise ParserError("Wrong config for 'ENTRY'")
-            self._entry = [int(x), int(y)]
-            x, y = self._maze_config["EXIT"].split(",", 1)
-            if not x or not y:
-                raise ParserError("Wrong config for 'EXIT'")
-            self._exit = [int(x), int(y)]
-            self._output_file = self._maze_config["OUTPUT_FILE"]
-            if "SEED" in self._maze_config.keys():
-                self._seed = self._maze_config["SEED"]
-        except ParserError as error:
-            print(error)
-            sys.exit(1)
-        except ValueError as error:
-            print(error)
-            sys.exit(1)
-        except Exception as error:
-            print(f"GOT UNEXPECTED EXCEPTION: {error}")
-            sys.exit(1)
 
+        self._width = int(self._maze_config["WIDTH"])
+        self._height = int(self._maze_config["HEIGHT"])
+        x, y = self._maze_config["ENTRY"].split(",", 1)
+        if not x or not y:
+            raise ParserError("Wrong config for 'ENTRY'")
+        self._entry = [int(x), int(y)]
+        x, y = self._maze_config["EXIT"].split(",", 1)
+        if not x or not y:
+            raise ParserError("Wrong config for 'EXIT'")
+        self._exit = [int(x), int(y)]
+        self._output_file = self._maze_config["OUTPUT_FILE"]
+        if "SEED" in self._maze_config.keys():
+            self._seed = self._maze_config["SEED"]
 
 
     def verify_missing(self) -> None:
@@ -100,6 +94,19 @@ class Parser():
                 continue
             if param not in self._maze_config.keys():
                 self._missing.append(param)
+
+
+    def verify_atributes(self) -> None:
+
+        if self._entry == self._exit:
+            raise MazeConfigError("The entry and exit points can't be the same")
+        x1, y1 = self._entry
+        x2, y2 = self._exit
+        if x1 > self._width or x2 > self._width:
+            raise MazeConfigError("The entry and exit points need to be within maze boundaries")
+        if y1 > self._height or y2 > self._height:
+            raise MazeConfigError("The entry and exit points need to be within maze boundaries")
+
 
 
     def show(self) -> None:
@@ -133,12 +140,19 @@ def main() -> None:
             if not parser._missing:
                 parser.set_data()
                 parser.show()
+                parser.verify_atributes()
             else:
                 parser.show()
                 raise ParserError(f"The following configurations are missing: {parser._missing}")
     except ParserError as error:
         print(f"Got exception: {error}")
         sys.exit(1)
+    except ValueError as error:
+        print(f"Got exception: {error}")
+        sys.exit(1)
+    except Exception as error:
+        print(f"GOT UNEXPECTED EXCEPTION: {error}")
+        sys.exit(1) 
     else:
         return
 
