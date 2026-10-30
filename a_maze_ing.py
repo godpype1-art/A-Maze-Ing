@@ -8,6 +8,7 @@ class ParserError(Exception):
 class Parser():
     def __init__(self) -> None:
         self._maze_config: dict[str, str] = {}
+        self._missing: list[str] = []
         self._width: int = -1
         self._height: int = -1
         self._entry: tuple[int, int] = []
@@ -63,31 +64,42 @@ class Parser():
                         print(error)
                     except Exception as error:
                         print(f"[LINE {i}] GOT UNEXPECTED EXCEPTION: {error}")
+                        sys.exit(1)
 
 
     def set_data(self) -> None:
         try:
-            self._width = self._maze_config["WIDTH"]
-            self._height = self._maze_config["HEIGHT"]
+            self._width = int(self._maze_config["WIDTH"])
+            self._height = int(self._maze_config["HEIGHT"])
             x, y = self._maze_config["ENTRY"].split(",", 1)
+            if not x or not y:
+                raise ParserError("Wrong config for 'ENTRY'")
             self._entry = [int(x), int(y)]
             x, y = self._maze_config["EXIT"].split(",", 1)
+            if not x or not y:
+                raise ParserError("Wrong config for 'EXIT'")
             self._exit = [int(x), int(y)]
             self._output_file = self._maze_config["OUTPUT_FILE"]
             if "SEED" in self._maze_config.keys():
                 self._seed = self._maze_config["SEED"]
-        except ParserError() as error:
+        except ParserError as error:
             print(error)
+            sys.exit(1)
         except ValueError as error:
             print(error)
+            sys.exit(1)
         except Exception as error:
             print(f"GOT UNEXPECTED EXCEPTION: {error}")
+            sys.exit(1)
 
 
 
     def verify_missing(self) -> None:
-
-        pass
+        for param in self._parameters:
+            if param == "SEED":
+                continue
+            if param not in self._maze_config.keys():
+                self._missing.append(param)
 
 
     def show(self) -> None:
@@ -117,10 +129,16 @@ def main() -> None:
             filename: str = sys.argv[1].strip()
             parser = Parser()
             parser.parsing(filename)
-            parser.set_data()
-            parser.show()
+            parser.verify_missing()
+            if not parser._missing:
+                parser.set_data()
+                parser.show()
+            else:
+                parser.show()
+                raise ParserError(f"The following configurations are missing: {parser._missing}")
     except ParserError as error:
         print(f"Got exception: {error}")
+        sys.exit(1)
     else:
         return
 
