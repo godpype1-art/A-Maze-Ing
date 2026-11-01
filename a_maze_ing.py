@@ -10,6 +10,56 @@ class MazeConfigError(Exception):
 
 
 class Parser():
+    """A structure designed to parse data from a `config.txt` file
+    """
+    _maze_config = {}
+    """Values parsed from the config file (`dict`)
+    """
+
+    _missing = []
+    """Missing values from the config file (`list`)
+    """
+
+    _width = -1
+    """The maze width (`int`)
+    """
+
+    _height = -1
+    """The maze height (`int`)
+    """
+
+    _entry = []
+    """The maze entry point (`tuple`)
+    """
+
+    _exit = []
+    """The maze exit point (`tuple`)
+    """
+
+    _output_file = ""
+    """The name of the output file (`str`)
+    """
+
+    _perfect = False
+    """The maze complexity (`bool`)
+    """
+
+    _seed = -1
+    """The maze seed for generation (optional) (`int`)
+    """
+
+    _parameters = [
+        "WIDTH",
+        "HEIGHT",
+        "ENTRY",
+        "EXIT",
+        "OUTPUT_FILE",
+        "PERFECT",
+        "SEED"
+    ]
+    """A set containing the expected config flags (`set`)
+    """
+
     def __init__(self) -> None:
         self._maze_config: dict[str, str] = {}
         self._missing: list[str] = []
@@ -20,7 +70,6 @@ class Parser():
         self._output_file: str = ""
         self._perfect: bool = False
         self._seed: int = -1
-
         self._parameters: set = [
             "WIDTH",
             "HEIGHT",
@@ -33,6 +82,20 @@ class Parser():
 
 
     def parsing(self, filename: str) -> None:
+        """The parsing method
+
+        Open a file and extract information from it, storing in `self._maze_config`
+
+        Parameters
+        ----------
+        filename : `str`
+            The name of the file to parse from
+
+        Raises
+        ------
+        ParserError
+            Raised if any line from file is not written in expected format         
+        """
         try:
             with open(filename, "r") as file:
                 lines: list[str] = file.readlines()
@@ -72,6 +135,15 @@ class Parser():
 
 
     def set_data(self) -> None:
+        """Convert previously parsed data in class atributes
+
+        Raises
+        ------
+        ParserError
+            Raised if any line from file is not written in expected format
+        ValueError
+            Raised if the convertion of the entry and exit points fails
+        """
 
         self._width = int(self._maze_config["WIDTH"])
         self._height = int(self._maze_config["HEIGHT"])
@@ -89,6 +161,8 @@ class Parser():
 
 
     def verify_missing(self) -> None:
+        """Verify missing mandatory config flags
+        """
         for param in self._parameters:
             if param == "SEED":
                 continue
@@ -97,6 +171,13 @@ class Parser():
 
 
     def verify_atributes(self) -> None:
+        """Verify the validity of provided data
+        
+        Raises
+        ------
+        MazeConfigError
+            Raised if data provided is incoherent or impossible to generate from
+        """
 
         if self._entry == self._exit:
             raise MazeConfigError("The entry and exit points can't be the same")
