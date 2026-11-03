@@ -1,5 +1,0 @@
-# This file contains the project/venv requirements. To be removed for submission
-
-
-flake8
-mypy

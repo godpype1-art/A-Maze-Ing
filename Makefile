@@ -1,41 +1,34 @@
-# must contain following rules
-
-srcs:
-	a_maze_ing.py
-
-helpers:
-	requirements.txt
-	config.txt
-
+# runs the project
+run:
+	uv run python a_maze_ing.py config.txt
 
 
 # intall the requirements
 install:
-	pip install -r requirements.txt
-
-
-# runs the project
-run:
-	python3 a_maze_ing.py config.txt
+	uv sync
 
 
 # run in debug mode with python builtin debugger
 debug:
-	python3 -m pdb ...
+	uv run python -m pdb a_maze_ing.py config.txt
 
 
 # removes temporary files (pychache etc)
 clean:
-	rm -f ...
-	rm -d ...
+	rm -rf ...
 
 
 # runs mypy and flake8
 lint:
-
+	uv run flake8 . && uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 # runs mypy and flake8 --strict versions
 lint-strict: #(optional)
+	uv run flake8 . && uv run mypy . --strict
+
+# builds the package
+build:
+	uv build
 
 
-.PHONY: 
+.PHONY: run install debug clean lint lint-strict build
