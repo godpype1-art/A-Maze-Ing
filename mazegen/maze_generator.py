@@ -25,11 +25,26 @@ class Cell():
         result.append((self._location[0] - 1, self._location[1]))
         return result
 
+    def get_position_direction(self, position: tuple[int, int]) -> int:
+        positions: list[tuple[int, int]] = self.get_adjacent_positions()
+        for i in range(len(positions)):
+            if positions[i] == position:
+                return 1 << i
+        return 0
+
     def get_position(self) -> tuple[int, int]:
         return self._location
     
-    def set_wall(self, bit: int) -> None:
-        self._walls 
+    def set_walls(self, direction: int) -> None:
+        self._walls = self._walls | direction
+
+    def remove_walls(self, direction: int) -> None:
+        direction = direction & self._walls
+        self._walls = self._walls ^ direction
+
+    def remove_wall(self, cell: Cell) -> None:
+        self.remove_wall(self.get_position_direction(cell.get_position()))
+
 
 class MazeGenerator():
     _width: int = -1
@@ -64,7 +79,6 @@ class MazeGenerator():
 
 
     def create_grid(self) -> None:
-
         for i in range(self._height):
             row: list[Cell] = []
             for j in range(self._width):
@@ -90,6 +104,12 @@ class MazeGenerator():
         adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions(cell.get_position())
         return [pos if self.is_ouside() for pos in adjacent_pos]
 
+    def get_possible_cells(self, cell: Cell) -> list[Cell]:
+
+    def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
+        cel1.remove_wall(cel2)
+        cel2.remove_wall(cel1)
+
     def generate_maze(self) -> None:
         queue: list[Cell] = []
         stepped: set[Cell] = set()
@@ -97,10 +117,15 @@ class MazeGenerator():
 
         while len(queue) > 0:
             chosen: Cell = random.choice(queue)
-            stepped.add(chosen)
             queue.remove(chosen)
+            if len(stepped) != 0:
+                wall: Cell = random.choice([cell if cell in stepped for cell in self.get_adjacent_cells(chosen)])
+            stepped.add(chosen)
+            self.remove_wall(chosen, wall)
+
             for i in chosen.get_adjacent_cells(chosen):
-                queue.add(i)
+                if not i in stepped:
+                    queue.add(i)
 
     def show(self) -> None:
         print(
