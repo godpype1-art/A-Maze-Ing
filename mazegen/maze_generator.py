@@ -1,12 +1,21 @@
-
 import random
+from typing import Any 
+
+
+
+NORTH: int = 1 << 0
+EAST: int = 1 << 1
+SOUTH: int = 1 << 2
+WEST: int = 1 << 3
+
+
 
 class Cell():
     _location: tuple[int, int] = (0, 0)
-    _walls: int = 15
+    walls: int = 15
 
-    def __init__(self, x: int, y: int) -> None:
-        self._location = (x, y)
+    def __init__(self, row: int, col: int) -> None:
+        self._location = (row, col)
 
     def get_adjacent_positions(self) -> list[tuple[int, int]]:
         result: list[tuple[int, int]] = []
@@ -30,7 +39,7 @@ class MazeGenerator():
     _output_file: str = ""
     _perfect: bool = False
     _seed: int = -1
-    _grid: list[list[Cell]] = []
+    grid: list[list[Cell]] = []
 
 
     def __init__(
@@ -49,20 +58,24 @@ class MazeGenerator():
         self._exit: tuple[int, int] = exit
         self._output_file: str = output
         self._perfect: bool = perfect
-        self._seed: int = seed
+        self._seed: Any = random.Random(seed) if seed != None else random.Random()
+        self.grid: list[list[Cell]] = []
+        self.create_grid()
+
 
     def create_grid(self) -> None:
-        for i in range(self._width):
-            col: list[Cell] = []
-            for j in range(self._height):
-                cell = Cell(i, j)
-                col.append(cell)
-            self._grid.append(col)
+
+        for i in range(self._height):
+            row: list[Cell] = []
+            for j in range(self._width):
+                row.append(Cell(i, j))
+            self.grid.append(row)
+
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:
         if pos[0] < 0 or pos[1] < 0:
             return True
-        if pos[0] >= self._width or pos[1] >= self._height:
+        if pos[1] >= self._width or pos[0] >= self._height:
             return True
         return False
 
