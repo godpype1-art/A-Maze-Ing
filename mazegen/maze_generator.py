@@ -16,6 +16,11 @@ class Cell():
         result.append((self._location[0] - 1, self._location[1]))
         return result
 
+    def get_position(self) -> tuple[int, int]:
+        return self._location
+    
+    def set_wall(self, bit: int) -> None:
+        self._walls 
 
 class MazeGenerator():
     _width: int = -1
@@ -61,14 +66,16 @@ class MazeGenerator():
             return True
         return False
 
+    def get_cell(self, pos: tuple[int, int]) -> Cell:
+        return self._grid[pos[1]][pos[0]]
+
     def random_cell(self) -> Cell:
-        return self._grid[random.randint(0, self._height)][
-            random.randint(0, self._width)]
+        return self.get_cell((random.randint(0, self._height),
+            random.randint(0, self._width)))
 
     def get_adjacent_cells(self, cell: Cell) -> list[Cell]:
-        adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions()
-        result: list[Cell] = []
-
+        adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions(cell.get_position())
+        return [pos if self.is_ouside() for pos in adjacent_pos]
 
     def generate_maze(self) -> None:
         queue: list[Cell] = []
@@ -79,8 +86,8 @@ class MazeGenerator():
             chosen: Cell = random.choice(queue)
             stepped.add(chosen)
             queue.remove(chosen)
-            for i in chosen.get_adjacent_positions():
-                if self._grid[]
+            for i in chosen.get_adjacent_cells(chosen):
+                queue.add(i)
 
     def show(self) -> None:
         print(
