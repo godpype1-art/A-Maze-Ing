@@ -38,12 +38,18 @@ class Cell():
     def set_walls(self, direction: int) -> None:
         self._walls = self._walls | direction
 
+    def check_walls(self, direction: int) -> bool:
+        return ((self._walls & direction) > 0)
+
     def remove_walls(self, direction: int) -> None:
         direction = direction & self._walls
         self._walls = self._walls ^ direction
 
     def remove_wall(self, cell: Cell) -> None:
         self.remove_wall(self.get_position_direction(cell.get_position()))
+
+    def check_wall(self, cell: Cell) -> bool:
+        return self.check_walls(self.get_position_direction(cell.get_position()))
 
 
 class MazeGenerator():
@@ -105,6 +111,7 @@ class MazeGenerator():
         return [pos if self.is_ouside() for pos in adjacent_pos]
 
     def get_possible_cells(self, cell: Cell) -> list[Cell]:
+        return [c if not cell.check_wall(c) for c in self.get_adjacent_cells(cell)]
 
     def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
         cel1.remove_wall(cel2)
