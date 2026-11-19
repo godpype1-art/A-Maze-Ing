@@ -1,6 +1,6 @@
 import random
-from typing import Any 
-
+from typing import Any
+from .exceptions import MazeConfigError 
 
 
 NORTH: int = 1 << 0
@@ -12,7 +12,7 @@ WEST: int = 1 << 3
 
 class Cell():
     _location: tuple[int, int] = (0, 0)
-    walls: int = 15
+    _walls: int = 15
 
     def __init__(self, row: int, col: int) -> None:
         self._location = (row, col)
@@ -32,6 +32,9 @@ class Cell():
                 return 1 << i
         return 0
 
+    def get_cell_direction(self, cell: Any) -> int:
+        return self.get_position_direction(cell.get_position())
+
     def get_position(self) -> tuple[int, int]:
         return self._location
     
@@ -45,12 +48,60 @@ class Cell():
         direction = direction & self._walls
         self._walls = self._walls ^ direction
 
-    def remove_wall(self, cell: Cell) -> None:
+    def remove_wall(self, cell: Any) -> None:
         self.remove_wall(self.get_position_direction(cell.get_position()))
 
-    def check_wall(self, cell: Cell) -> bool:
+    def check_wall(self, cell: Any) -> bool:
         return self.check_walls(self.get_position_direction(cell.get_position()))
 
+    def get_location(self) -> tuple[int, int]:
+        return self._location
+    
+    def get_hexadecimal(self) -> str:
+        return hex(self._walls)
+
+
+class CellPath():
+    _size: int = 0
+
+    def __init__(self, start: Cell, before: CellPath | None = None) -> None:
+        self._head: Cell = start
+        self._rest: CellPath = before
+    
+        if before != None:
+            self._size: int = 1 + before.get_size()
+
+    def get_size(self) -> int:
+        return self._size
+
+    def branch(self, new_place: Cell) -> Anyz:
+        return CellPath(new_place, self)
+
+    def generate_branchs(self, nodes: list[Cell]) -> list[CellPath]:
+        result: list[CellPath] = []
+        for node in nodes:
+            result.append(self.branch(node))
+        return result
+
+    def get_head(self) -> Cell:
+        return self._head
+
+    def get_head_direction(self) -> int:
+        if self.size == 1:
+            return 0
+        return self._head.get_cell_direction(self._path.get_head())
+
+    def __str__(self) -> None:
+        direction: int = self.get_head_direction()
+        if direction == NORTH:
+            return self._path + "N"
+        if direction == EAST:
+            return self._path + "E"
+        if direction == WEST:
+            return self._path + "W"
+        if direction == SOUTH:
+            return self._path + "S"
+        return ""
 
 class MazeGenerator():
     _width: int = -1
@@ -60,7 +111,7 @@ class MazeGenerator():
     _output_file: str = ""
     _perfect: bool = False
     _seed: int = -1
-    grid: list[list[Cell]] = []
+    _grid: list[list[Cell]] = []
 
 
     def __init__(
@@ -80,8 +131,12 @@ class MazeGenerator():
         self._output_file: str = output
         self._perfect: bool = perfect
         self._seed: Any = random.Random(seed) if seed != None else random.Random()
-        self.grid: list[list[Cell]] = []
+        self._grid: list[list[Cell]] = []
+        self._answer: CellPath | None = None
+        
         self.create_grid()
+        self._cell_exit: Cell = self.get_cell(self._exit)
+        self._cell_entry: Cell = self.get_cell(self._entry)
 
 
     def create_grid(self) -> None:
@@ -90,7 +145,6 @@ class MazeGenerator():
             for j in range(self._width):
                 row.append(Cell(i, j))
             self.grid.append(row)
-
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:
         if pos[0] < 0 or pos[1] < 0:
@@ -108,10 +162,10 @@ class MazeGenerator():
 
     def get_adjacent_cells(self, cell: Cell) -> list[Cell]:
         adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions(cell.get_position())
-        return [pos if self.is_ouside() for pos in adjacent_pos]
+        return [self.get_cell(pos) for pos in adjacent_pos if self.is_ouside(pos)]
 
     def get_possible_cells(self, cell: Cell) -> list[Cell]:
-        return [c if not cell.check_wall(c) for c in self.get_adjacent_cells(cell)]
+        return [c for c in self.get_adjacent_cells(cell) if not cell.check_wall(c)]
 
     def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
         cel1.remove_wall(cel2)
@@ -126,13 +180,52 @@ class MazeGenerator():
             chosen: Cell = random.choice(queue)
             queue.remove(chosen)
             if len(stepped) != 0:
-                wall: Cell = random.choice([cell if cell in stepped for cell in self.get_adjacent_cells(chosen)])
+                wall: Cell = random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
             stepped.add(chosen)
             self.remove_wall(chosen, wall)
 
             for i in chosen.get_adjacent_cells(chosen):
                 if not i in stepped:
                     queue.add(i)
+
+    def solve_maze(self) -> None:
+        queue: list[CellPath] = []
+        stepped: set[Cell] = set()
+        queue.append(CellPath(self._cell_entry))
+
+        while len(queue) > 0:
+            chosen: CellPath = queue[0]
+            chosen_head: Cell = chosen.get_head()
+
+            queue.remove(chosen)
+            stepped.add(chosen.get_head())
+
+            for i in self.get_possible_cells(chosen_head):
+                if i == self._cell_exit:
+                    self._answer = chosen.branch(i)
+                    break
+                if not i in stepped:
+                    queue.add(chosen.branch(i))
+    
+    def save_as_file(self) -> None:
+        with open(self._output_file, "w") as file:
+            for line in self._grid:
+                for node in line:
+                    file.write(node.get_hexadecimal())
+                file.write("\n")
+            
+            file.write("\n")
+            
+            file.write(f"{self._entry[0]},{self._entry[1]}\n")
+            file.write(f"{self._exit[0]},{self._exit[1]}\n")
+
+            if self._answer != None:
+                file.write(str(self._answer))
+    
+    def execute(self) -> None:
+        self.generate_maze()
+        self.solve_maze()
+        self.save_as_file()
 
     def show(self) -> None:
         print(

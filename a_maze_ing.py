@@ -40,9 +40,8 @@ def main() -> None:
             parser._perfect,
             parser._seed
         )
-        maze_gen.show()
-        print()
-        maze_gen.create_grid()
+        maze_gen
+        
 
 
 if __name__ == "__main__":
