@@ -1,13 +1,11 @@
 import random
 from typing import Any
-from .exceptions import MazeConfigError 
 
 
 NORTH: int = 1 << 0
 EAST: int = 1 << 1
 SOUTH: int = 1 << 2
 WEST: int = 1 << 3
-
 
 
 class Cell():
@@ -32,12 +30,12 @@ class Cell():
                 return 1 << i
         return 0
 
-    def get_cell_direction(self, cell: Any) -> int:
+    def get_cell_direction(self, cell: "Cell") -> int:
         return self.get_position_direction(cell.get_position())
 
     def get_position(self) -> tuple[int, int]:
         return self._location
-    
+
     def set_walls(self, direction: int) -> None:
         self._walls = self._walls | direction
 
@@ -48,36 +46,42 @@ class Cell():
         direction = direction & self._walls
         self._walls = self._walls ^ direction
 
-    def remove_wall(self, cell: Any) -> None:
-        self.remove_wall(self.get_position_direction(cell.get_position()))
+    def remove_wall(self, cell: "Cell") -> None:
+        self.remove_walls(self.get_position_direction(cell.get_position()))
 
-    def check_wall(self, cell: Any) -> bool:
-        return self.check_walls(self.get_position_direction(cell.get_position()))
+    def check_wall(self, cell: "Cell") -> bool:
+        return self.check_walls(self.get_position_direction(
+                                cell.get_position()))
 
     def get_location(self) -> tuple[int, int]:
         return self._location
-    
+
     def get_hexadecimal(self) -> str:
         return hex(self._walls)
+
+    def __str__(self):
+        return f"Cell{self._location}"
 
 
 class CellPath():
     _size: int = 0
+    _rest: Any | None = None
 
-    def __init__(self, start: Cell, before: CellPath | None = None) -> None:
+    def __init__(self, start: Cell, before: Any | None = None) -> None:
         self._head: Cell = start
-        self._rest: CellPath = before
-    
-        if before != None:
+
+        if before is not None:
+            self._rest = before
+
             self._size: int = 1 + before.get_size()
 
     def get_size(self) -> int:
         return self._size
 
-    def branch(self, new_place: Cell) -> Anyz:
+    def branch(self, new_place: Cell) -> "CellPath":
         return CellPath(new_place, self)
 
-    def generate_branchs(self, nodes: list[Cell]) -> list[CellPath]:
+    def generate_branchs(self, nodes: list[Cell]) -> list["CellPath"]:
         result: list[CellPath] = []
         for node in nodes:
             result.append(self.branch(node))
@@ -87,21 +91,22 @@ class CellPath():
         return self._head
 
     def get_head_direction(self) -> int:
-        if self.size == 1:
+        if self._size == 1 or self._rest is None:
             return 0
-        return self._head.get_cell_direction(self._path.get_head())
+        return self._head.get_cell_direction(self._rest.get_head())
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         direction: int = self.get_head_direction()
         if direction == NORTH:
-            return self._path + "N"
+            return str(self._rest) + "N"
         if direction == EAST:
-            return self._path + "E"
+            return str(self._rest) + "E"
         if direction == WEST:
-            return self._path + "W"
+            return str(self._rest) + "W"
         if direction == SOUTH:
-            return self._path + "S"
+            return str(self._rest) + "S"
         return ""
+
 
 class MazeGenerator():
     _width: int = -1
@@ -130,7 +135,7 @@ class MazeGenerator():
         self._exit: tuple[int, int] = exit
         self._output_file: str = output
         self._perfect: bool = perfect
-        self._seed: Any = random.Random(seed) if seed != None else random.Random()
+        self._seed: random.Random = random.Random(seed) if seed is not None else random.Random()
         self._grid: list[list[Cell]] = []
         self._answer: CellPath | None = None
         
@@ -138,31 +143,31 @@ class MazeGenerator():
         self._cell_exit: Cell = self.get_cell(self._exit)
         self._cell_entry: Cell = self.get_cell(self._entry)
 
-
     def create_grid(self) -> None:
         for i in range(self._height):
             row: list[Cell] = []
             for j in range(self._width):
                 row.append(Cell(i, j))
-            self.grid.append(row)
+            self._grid.append(row)
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:
         if pos[0] < 0 or pos[1] < 0:
             return True
-        if pos[1] >= self._width or pos[0] >= self._height:
+        if pos[1] >= self._height or pos[0] >= self._width:
             return True
         return False
 
     def get_cell(self, pos: tuple[int, int]) -> Cell:
+        print("position:", pos)
         return self._grid[pos[1]][pos[0]]
 
     def random_cell(self) -> Cell:
         return self.get_cell((random.randint(0, self._height),
-            random.randint(0, self._width)))
+               random.randint(0, self._width)))
 
     def get_adjacent_cells(self, cell: Cell) -> list[Cell]:
-        adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions(cell.get_position())
-        return [self.get_cell(pos) for pos in adjacent_pos if self.is_ouside(pos)]
+        adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions()
+        return [self.get_cell(pos) for pos in adjacent_pos if not self.is_ouside(pos)]
 
     def get_possible_cells(self, cell: Cell) -> list[Cell]:
         return [c for c in self.get_adjacent_cells(cell) if not cell.check_wall(c)]
@@ -177,16 +182,22 @@ class MazeGenerator():
         queue.append(self.random_cell())
 
         while len(queue) > 0:
+            print("wow")
             chosen: Cell = random.choice(queue)
             queue.remove(chosen)
-            if len(stepped) != 0:
-                wall: Cell = random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
-            stepped.add(chosen)
-            self.remove_wall(chosen, wall)
 
-            for i in chosen.get_adjacent_cells(chosen):
-                if not i in stepped:
-                    queue.add(i)
+            print(chosen)
+            print(self.get_adjacent_cells(chosen))
+
+            if len(stepped) > 0:
+                wall: Cell = random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
+                self.remove_wall(chosen, wall)
+
+            stepped.add(chosen)
+
+            for i in self.get_adjacent_cells(chosen):
+                if i not in stepped:
+                    queue.append(i)
 
     def solve_maze(self) -> None:
         queue: list[CellPath] = []
@@ -204,9 +215,9 @@ class MazeGenerator():
                 if i == self._cell_exit:
                     self._answer = chosen.branch(i)
                     break
-                if not i in stepped:
-                    queue.add(chosen.branch(i))
-    
+                if i not in stepped:
+                    queue.append(chosen.branch(i))
+
     def save_as_file(self) -> None:
         with open(self._output_file, "w") as file:
             for line in self._grid:
@@ -219,7 +230,7 @@ class MazeGenerator():
             file.write(f"{self._entry[0]},{self._entry[1]}\n")
             file.write(f"{self._exit[0]},{self._exit[1]}\n")
 
-            if self._answer != None:
+            if self._answer is not None:
                 file.write(str(self._answer))
     
     def execute(self) -> None:

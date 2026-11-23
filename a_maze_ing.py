@@ -40,7 +40,7 @@ def main() -> None:
             parser._perfect,
             parser._seed
         )
-        maze_gen
+        maze_gen.execute()
         
 
 
