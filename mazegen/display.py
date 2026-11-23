@@ -2,8 +2,7 @@
 from mlx import Mlx
 
 
-
-
+CELL_SIZE: int = 50
 
 
 COLOR: dict[str, int] = {
@@ -43,6 +42,28 @@ class Display:
             None
         )
 
+        self.image = self.mlx.mlx_new_image(
+        self.mlx_ptr,
+        self.width,
+        self.height
+    )
+
+        if self.image is None:
+            raise RuntimeError("Could not create MLX image")
+
+        (
+            self.pixels,
+            self.bits_per_pixel,
+            self.size_line,
+            self.image_format
+        ) = self.mlx.mlx_get_data_addr(self.image)
+
+        print("Bits per pixel:", self.bits_per_pixel)
+        print("Bytes per pixel:", self.bits_per_pixel // 8)
+        print("Bytes per row:", self.size_line)
+        print("Image format:", self.image_format)
+        print("Buffer length:", len(self.pixels))
+
     def on_key(self, key: int, _param) -> None:
         if key == 65307:  # Escape
             self.mlx.mlx_loop_exit(self.mlx_ptr)
@@ -79,14 +100,14 @@ class Display:
         for i in range(width):
             if i == 0 or i == width - 1:
                 continue
-            self.draw_v_line(x + i, y + 1, height - 2, COLOR["red"])
+            self.draw_v_line(x + i, y + 1, height - 2, COLOR["white"])
 
 
     def run(self) -> None:
 
         #self.draw_rectangle(100, 100, 300, 200, COLOR["red"])
-        self.draw_fill_rectangle(100, 100, 300, 200, COLOR["white"])
-
+        self.draw_fill_rectangle(100, 100, CELL_SIZE, CELL_SIZE, COLOR["white"])
+        self.mlx.mlx_string_put(self.mlx_ptr, self.window, 100, 100, COLOR["white"], "ifjeworuv")
         self.mlx.mlx_loop(self.mlx_ptr)
 
         # Cleanup after the event loop exits
