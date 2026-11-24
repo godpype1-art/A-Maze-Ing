@@ -21,11 +21,11 @@ class Parser():
     """The maze height (`int`)
     """
 
-    _entry = []
+    _entry = ()
     """The maze entry point (`tuple`)
     """
 
-    _exit = []
+    _exit = ()
     """The maze exit point (`tuple`)
     """
 
@@ -58,8 +58,8 @@ class Parser():
         self._missing: list[str] = []
         self._width: int = -1
         self._height: int = -1
-        self._entry: tuple[int, int] = []
-        self._exit: tuple[int, int] = []
+        self._entry: tuple[int, int] = ()
+        self._exit: tuple[int, int] = ()
         self._output_file: str = ""
         self._perfect: bool = False
         self._seed: int = -1
@@ -143,11 +143,11 @@ class Parser():
         x, y = self._maze_config["ENTRY"].split(",", 1)
         if not x or not y:
             raise ParserError("Wrong config for 'ENTRY'")
-        self._entry = [int(x), int(y)]
+        self._entry = (int(x), int(y))
         x, y = self._maze_config["EXIT"].split(",", 1)
         if not x or not y:
             raise ParserError("Wrong config for 'EXIT'")
-        self._exit = [int(x), int(y)]
+        self._exit = (int(x), int(y))
         self._output_file = self._maze_config["OUTPUT_FILE"]
         if "SEED" in self._maze_config.keys():
             self._seed = self._maze_config["SEED"]

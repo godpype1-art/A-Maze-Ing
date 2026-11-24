@@ -4,3 +4,6 @@ class ParserError(Exception):
 
 class MazeConfigError(Exception):
     ...
+
+class MazeInternalError(Exception):
+    ...
