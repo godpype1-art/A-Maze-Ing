@@ -12,14 +12,14 @@ class Cell():
     _location: tuple[int, int] = (0, 0)
     _walls: int = 15
 
-    def __init__(self, row: int, col: int) -> None:
-        self._location = (row, col)
+    def __init__(self, col: int, row: int) -> None:
+        self._location = (col, row)
 
     def get_adjacent_positions(self) -> list[tuple[int, int]]:
         result: list[tuple[int, int]] = []
-        result.append((self._location[0], self._location[1] + 1))
-        result.append((self._location[0] + 1, self._location[1]))
         result.append((self._location[0], self._location[1] - 1))
+        result.append((self._location[0] + 1, self._location[1]))
+        result.append((self._location[0], self._location[1] + 1))
         result.append((self._location[0] - 1, self._location[1]))
         return result
 
@@ -57,7 +57,7 @@ class Cell():
         return self._location
 
     def get_hexadecimal(self) -> str:
-        return hex(self._walls)
+        return hex(self._walls).removeprefix("0x")
 
     def __str__(self):
         return f"Cell{self._location}"
@@ -116,6 +116,7 @@ class MazeGenerator():
     _output_file: str = ""
     _perfect: bool = False
     _seed: int = -1
+    _maze_random: random.Random = random.Random()
     _grid: list[list[Cell]] = []
 
 
@@ -135,10 +136,14 @@ class MazeGenerator():
         self._exit: tuple[int, int] = exit
         self._output_file: str = output
         self._perfect: bool = perfect
-        self._seed: random.Random = random.Random(seed) if seed is not None else random.Random()
+
+        if seed is not None:
+            self._seed = seed
+            self._maze_random: random.Random = random.Random(seed)
+
         self._grid: list[list[Cell]] = []
         self._answer: CellPath | None = None
-        
+
         self.create_grid()
         self._cell_exit: Cell = self.get_cell(self._exit)
         self._cell_entry: Cell = self.get_cell(self._entry)
@@ -147,7 +152,7 @@ class MazeGenerator():
         for i in range(self._height):
             row: list[Cell] = []
             for j in range(self._width):
-                row.append(Cell(i, j))
+                row.append(Cell(j, i))
             self._grid.append(row)
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:
@@ -158,12 +163,11 @@ class MazeGenerator():
         return False
 
     def get_cell(self, pos: tuple[int, int]) -> Cell:
-        print("position:", pos)
         return self._grid[pos[1]][pos[0]]
 
     def random_cell(self) -> Cell:
-        return self.get_cell((random.randint(0, self._height),
-               random.randint(0, self._width)))
+        return self.get_cell((self._maze_random.randint(0, self._width - 1),
+                              self._maze_random.randint(0, self._height - 1)))
 
     def get_adjacent_cells(self, cell: Cell) -> list[Cell]:
         adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions()
@@ -182,21 +186,17 @@ class MazeGenerator():
         queue.append(self.random_cell())
 
         while len(queue) > 0:
-            print("wow")
             chosen: Cell = random.choice(queue)
             queue.remove(chosen)
 
-            print(chosen)
-            print(self.get_adjacent_cells(chosen))
-
             if len(stepped) > 0:
-                wall: Cell = random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
+                wall: Cell = self._maze_random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
                 self.remove_wall(chosen, wall)
 
             stepped.add(chosen)
 
             for i in self.get_adjacent_cells(chosen):
-                if i not in stepped:
+                if i not in stepped and i not in queue:
                     queue.append(i)
 
     def solve_maze(self) -> None:
@@ -224,15 +224,15 @@ class MazeGenerator():
                 for node in line:
                     file.write(node.get_hexadecimal())
                 file.write("\n")
-            
+
             file.write("\n")
-            
+
             file.write(f"{self._entry[0]},{self._entry[1]}\n")
             file.write(f"{self._exit[0]},{self._exit[1]}\n")
 
             if self._answer is not None:
                 file.write(str(self._answer))
-    
+
     def execute(self) -> None:
         self.generate_maze()
         self.solve_maze()

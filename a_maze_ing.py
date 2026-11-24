@@ -41,7 +41,6 @@ def main() -> None:
             parser._seed
         )
         maze_gen.execute()
-        
 
 
 if __name__ == "__main__":
