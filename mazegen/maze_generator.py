@@ -13,6 +13,9 @@ WEST: int = 1 << 3
 class Cell():
     _location: tuple[int, int] = (0, 0)
     walls: int = 15
+    fix_cell: bool = False
+    entry: bool = False
+    exit: bool = False
 
     def __init__(self, row: int, col: int) -> None:
         self._location = (row, col)
@@ -63,8 +66,33 @@ class MazeGenerator():
         for i in range(self._height):
             row: list[Cell] = []
             for j in range(self._width):
-                row.append(Cell(i, j))
+                cell: Cell = Cell(i, j)
+                if (i, j) == self._entry:
+                    cell.entry = True
+                elif (i, j) == self._exit:
+                    cell.exit = True
+                row.append(cell)
             self.grid.append(row)
+
+    # Debug function to test display
+    def alter_maze(self) -> None:
+        # Alter col
+        for i in range(0, self._height):
+            if i != 0:
+                self.grid[i][0].walls &= ~(1 << 0)
+                self.grid[i][8].walls &= ~(1 << 0)
+            if i != self._height - 1:
+                self.grid[i][0].walls &= ~(1 << 2)
+                self.grid[i][8].walls &= ~(1 << 2)
+        # Alter row
+        for j in range(0, self._width):
+            if j != 0:
+                self.grid[1][j].walls &= ~(1 << 3)
+                self.grid[7][j].walls &= ~(1 << 3)
+            if j != self._width - 1:
+                self.grid[1][j].walls &= ~(1 << 1)
+                self.grid[7][j].walls &= ~(1 << 1)
+
 
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:

@@ -1,126 +1,227 @@
-#from .maze_generator import Cell, MazeGenerator
-from mlx import Mlx
+from .maze_generator import Cell, MazeGenerator
+from .exceptions import MazeConfigError
+from enum import Enum
+from typing import Any
+import subprocess
+import sys
 
 
-CELL_SIZE: int = 50
+MAZE_BLOCK: str = "  "
 
 
-COLOR: dict[str, int] = {
-    "red" : 0xFFFF0000,
-    "green" : 0xFF00FF00,
-    "blue" : 0xFF0000FF,
-    "white" : 0xFFFFFFFF,
-    "black" : 0xFF000000
+OPTIONS: dict[int, str] = {
+    1: "Regenerate maze",
+    2: "Show/Hide solution",
+    3: "Alternate maze colors",
+    4: "Exit program"
 }
 
+
+class Color(list[str], Enum):
+    ENTRY = ["42", "", ""]  # Green
+    EXIT = ["41", "", ""]  # Red
+    WALL = ["47", "", ""]  # White
+    OPEN = ["40", "", ""]  # Black
+    PATH = ["46", "", ""]  # Cyan
+    FIXCELL = ["44", "", ""]  # Blue
+
+
 class Display:
-    def __init__(self) -> None:
-        self.mlx = Mlx()
-        self.width = 800
-        self.height = 600
-        self.mlx_ptr = self.mlx.mlx_init()
 
-        self.window = self.mlx.mlx_new_window(
-            self.mlx_ptr,
-            self.width,
-            self.height,
-            "My first MLX window"
-        )
+    # answer is the CellPath object with the solution to highlight
+    def __init__(
+            self, maze_grid: list[list[Cell]],
+            maze_width: int, maze_height: int, answer: Any
+            ) -> None:
 
-        # Register callbacks
-        self.mlx.mlx_key_hook(
-            self.window,
-            self.on_key,
-            None
-        )
+        # Color palete from the Color Enum
+        self.color: int = 0
 
-        self.mlx.mlx_hook(
-            self.window,
-            33,
-            0,
-            self.on_close,
-            None
-        )
+        # The Cell grid from the MazeGenerator class
+        self.grid: list[list[Cell]] = maze_grid
 
-        self.image = self.mlx.mlx_new_image(
-        self.mlx_ptr,
-        self.width,
-        self.height
-    )
+        # The display width built from the maze_width
+        self.width: int = 2 * maze_width + 1
 
-        if self.image is None:
-            raise RuntimeError("Could not create MLX image")
+        # The display heigth built from the maze_height
+        self.height: int = 2 * maze_height + 1
 
-        (
-            self.pixels,
-            self.bits_per_pixel,
-            self.size_line,
-            self.image_format
-        ) = self.mlx.mlx_get_data_addr(self.image)
+        # The boolean to show/hide the solution path
+        self.show_path: bool = False
 
-        print("Bits per pixel:", self.bits_per_pixel)
-        print("Bytes per pixel:", self.bits_per_pixel // 8)
-        print("Bytes per row:", self.size_line)
-        print("Image format:", self.image_format)
-        print("Buffer length:", len(self.pixels))
+        # The solution to the maze (as the CellPath class)
+        self.answer: Any = answer
 
-    def on_key(self, key: int, _param) -> None:
-        if key == 65307:  # Escape
-            self.mlx.mlx_loop_exit(self.mlx_ptr)
+        # The string to print the output with
+        self.line: str | None = None
 
-    def on_close(self, _param) -> None:
-        self.mlx.mlx_loop_exit(self.mlx_ptr)
+    # Calculates the color scheme to print
+    def block_color(self, color: list[str]) -> str:
+        return (f"\033[{color[self.color]}m{MAZE_BLOCK}\033[0m")
 
-    def draw_pixel(self, x: int, y: int, color: int) -> None:
-        self.mlx.mlx_pixel_put(self.mlx_ptr, self.window, x, y, color)
+    # Converts the display index to maze_grid index
+    def display_to_maze(self, index: int) -> int:
+        return int((index - 1) / 2)
 
-    def draw_h_line(self, x: int, y: int, size: int, color: int) -> None:
-        for i in range(size):
-            if x + i >= self.width:
-                break
-            self.draw_pixel(x + i, y, color)
+    # Converts the maze_grid index to display index
+    def maze_to_display(self, index: int) -> int:
+        return int(index * 2 + 1)
 
-    def draw_v_line(self, x: int, y: int, size: int, color: int) -> None:
-        for i in range(size):
-            if y + i >= self.height:
-                break
-            self.draw_pixel(x, y + i, color)
+    # Draws wall line
+    def draw_wall(self, i: int) -> str | None:
 
-    def draw_rectangle(self, x: int, y: int, width: int, height: int, color: int) -> None:
-        self.draw_h_line(x, y, width, color)
-        self.draw_v_line(x, y, height, color)
-        self.draw_h_line(x, y + height - 1, width, color)
-        self.draw_v_line(x + width - 1, y, height, color)
+        for j in range(0, self.width):
+            # Verify 1st or last line, first or last line block
+            if i == 0 or i == self.height - 1 or j == 0 or j == self.width - 1:
+                if self.line:
+                    self.line += self.block_color(Color.WALL)
+                else:
+                    self.line = self.block_color(Color.WALL)
+            # Vereify corners
+            elif j % 2 == 0:
+                self.line += self.block_color(Color.WALL)
+            # Verify wall
+            else:
+                col: int = self.display_to_maze(j)
+                ix: int = self.display_to_maze(i - 1)
+                iy: int = self.display_to_maze(i + 1)
+                cell_x: Cell = self.grid[ix][col]
+                cell_y: Cell = self.grid[iy][col]
+                # Verificar the cell_x ou cell_y tem 42flag OU sem cell_x
+                # tem parede a norte e cell_y tem parede a sul
+                if (
+                    cell_x.fix_cell or cell_y.fix_cell or
+                    (cell_x.walls >> 0 & 1 and cell_y.walls >> 2 & 1)
+                        ):
+                    self.line += self.block_color(Color.WALL)
+                # Verify incoherence
+                elif (
+                    (cell_x.walls >> 0 & cell_y.walls >> 2) and
+                    not (cell_x.walls >> 0 | cell_y.walls >> 2)
+                        ):
+                    raise MazeConfigError("Cell wall incoherence detected")
+                # Open path
+                else:
+                    self.line += self.block_color(Color.OPEN)
+        return self.line
 
-    def draw_fill_rectangle(self, x: int, y: int, width: int, height: int, color: int) -> None:
-        self.draw_h_line(x, y, width, color)
-        self.draw_v_line(x, y, height, color)
-        self.draw_h_line(x, y + height - 1, width, color)
-        self.draw_v_line(x + width - 1, y, height, color)
-        for i in range(width):
-            if i == 0 or i == width - 1:
-                continue
-            self.draw_v_line(x + i, y + 1, height - 2, COLOR["white"])
+    # Draws cell line
+    def draw_path(self, i: int) -> str | None:
 
+        for j in range(0, self.width):
+            # Verify 1st or last line block
+            if j == 0 or j == self.width - 1:
+                if self.line:
+                    self.line += self.block_color(Color.WALL)
+                else:
+                    self.line = self.block_color(Color.WALL)
+            # Verify cell block itself
+            elif j % 2 != 0:
+                row: int = self.display_to_maze(i)
+                col: int = self.display_to_maze(j)
+                cell: Cell = self.grid[int(row)][int(col)]
+                # Verify if cell is the entry point
+                if cell.entry:
+                    self.line += self.block_color(Color.ENTRY)
+                # Verify if cell is the exit point
+                elif cell.exit:
+                    self.line += self.block_color(Color.EXIT)
+                # Verify if cell is part of 42 logo
+                elif cell.fix_cell:
+                    self.line += self.block_color(Color.FIXCELL)
+                elif self.show_path and cell._location in self.answer:
+                    self.line += self.block_color(Color.PATH)
+                # Else, the path is open
+                else:
+                    self.line += self.block_color(Color.OPEN)
+            # Verify wall
+            elif j % 2 == 0:
+                row: int = self.display_to_maze(i)
+                jx: int = self.display_to_maze(j - 1)
+                jy: int = self.display_to_maze(j + 1)
+                cell_x: Cell = self.grid[row][jx]
+                cell_y: Cell = self.grid[row][jy]
+                # Verificar the cell_x ou cell_y tem 42flag OU
+                # sem cell_x tem parede a este e cell_y tem parede a oeste
+                if (
+                    cell_x.fix_cell or cell_y.fix_cell or
+                    (cell_x.walls >> 1 & 1 and cell_y.walls >> 3 & 1)
+                        ):
+                    self.line += self.block_color(Color.WALL)
+                # Verify incoherence
+                elif (
+                    (cell_x.walls >> 1 & cell_y.walls >> 3) and
+                    not (cell_x.walls >> 1 | cell_y.walls >> 3)
+                        ):
+                    raise MazeConfigError("Cell wall incoherence detected")
+                # Else, the path is open
+                else:
+                    self.line += self.block_color(Color.OPEN)
+        return self.line
 
-    def run(self) -> None:
+    # Displays the maze
+    def draw_maze(self) -> None:
 
-        #self.draw_rectangle(100, 100, 300, 200, COLOR["red"])
-        self.draw_fill_rectangle(100, 100, CELL_SIZE, CELL_SIZE, COLOR["white"])
-        self.mlx.mlx_string_put(self.mlx_ptr, self.window, 100, 100, COLOR["white"], "ifjeworuv")
-        self.mlx.mlx_loop(self.mlx_ptr)
+        for i in range(0, self.height):
+            self.line = None
+            # Add here clock function to recreate animation for the bonus
+            if i % 2 == 0:
+                print(f"{self.draw_wall(i)}")
+            elif i % 2 != 0:
+                print(f"{self.draw_path(i)}")
 
-        # Cleanup after the event loop exits
-        self.mlx.mlx_destroy_window(self.mlx_ptr, self.window)
-        self.mlx.mlx_release(self.mlx_ptr)
+    def alter_color(self):
 
-        print("MLX closed successfully.")
+        self.color += 1
+        if self.color == 3:
+            self.color = 0
+
+    def display_menu(self) -> None:
+
+        print()
+        for key, value in OPTIONS.items():
+            print(f"{key}. {value}")
+
+    def display_loop(self) -> None:
+
+        self.draw_maze()
+        while True:
+            try:
+                self.display_menu()
+                option: str = input("Select option:").strip()
+                if option == "1":
+                    subprocess.run("clear")
+                    self.draw_maze()
+                elif option == "2":
+                    self.show_path = True
+                    subprocess.run("clear")
+                    self.draw_maze()
+                elif option == "3":
+                    self.alter_color()
+                    subprocess.run("clear")
+                    self.draw_maze()
+                elif option == "4":
+                    sys.exit()
+                else:
+                    subprocess.run("clear")
+                    self.draw_maze()
+                    print("Only 4 options man...")
+            except (Exception, KeyboardInterrupt) as error:
+                print(f"Exception found: {error}")
 
 
 def main() -> None:
-    display = Display()
-    display.run()
+    try:
+        maze: MazeGenerator = MazeGenerator(
+            10, 10, (3, 3), (9, 9), "", False, None
+            )
+        maze.create_grid()
+        maze.alter_maze()
+        display: Display = Display(maze.grid, maze._width, maze._height, None)
+        display.display_loop()
 
+    except Exception as error:
+        print(f"Exception found: {error}")
 
 
 if __name__ == "__main__":
