@@ -11,6 +11,9 @@ WEST: int = 1 << 3
 class Cell():
     _location: tuple[int, int] = (0, 0)
     _walls: int = 15
+    _is_42: bool = False
+    _entry: bool = False
+    _exit: bool = False
 
     def __init__(self, col: int, row: int) -> None:
         self._location = (col, row)
@@ -61,6 +64,15 @@ class Cell():
 
     def __str__(self):
         return f"Cell{self._location}"
+
+    def number_of_walls(self) -> int:
+        return sum([1 for dir in [NORTH, WEST, EAST, SOUTH] if self.check_walls(dir)])
+
+    def is_forty_two(self) -> bool:
+        return self._is_42
+
+    def is_entry(self) -> bool:
+        return self._entry
 
 
 class CellPath():
@@ -119,7 +131,6 @@ class MazeGenerator():
     _maze_random: random.Random = random.Random()
     _grid: list[list[Cell]] = []
 
-
     def __init__(
             self,
             width: int,
@@ -155,6 +166,16 @@ class MazeGenerator():
                 row.append(Cell(j, i))
             self._grid.append(row)
 
+    def not_perfect(self) -> None:
+        for line in self._grid:
+            for block in line:
+                if block.number_of_walls() == 3:
+                    if block.is_forty_two():
+                        continue
+                    possible: Cell = self._maze_random.choice(
+                        self.get_possible_cells(block))
+                    self.remove_wall(block, possible)
+
     def is_ouside(self, pos: tuple[int, int]) -> bool:
         if pos[0] < 0 or pos[1] < 0:
             return True
@@ -171,10 +192,12 @@ class MazeGenerator():
 
     def get_adjacent_cells(self, cell: Cell) -> list[Cell]:
         adjacent_pos: list[tuple[int, int]] = cell.get_adjacent_positions()
-        return [self.get_cell(pos) for pos in adjacent_pos if not self.is_ouside(pos)]
+        return [self.get_cell(pos) for pos in adjacent_pos if
+                not self.is_ouside(pos)]
 
     def get_possible_cells(self, cell: Cell) -> list[Cell]:
-        return [c for c in self.get_adjacent_cells(cell) if not cell.check_wall(c)]
+        return [c for c in self.get_adjacent_cells(cell) if
+                not cell.check_wall(c)]
 
     def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
         cel1.remove_wall(cel2)
@@ -190,7 +213,9 @@ class MazeGenerator():
             queue.remove(chosen)
 
             if len(stepped) > 0:
-                wall: Cell = self._maze_random.choice([cell for cell in self.get_adjacent_cells(chosen) if cell in stepped])
+                wall: Cell = self._maze_random.choice([
+                    cell for cell in self.get_adjacent_cells(chosen) if
+                    cell in stepped])
                 self.remove_wall(chosen, wall)
 
             stepped.add(chosen)
@@ -198,6 +223,9 @@ class MazeGenerator():
             for i in self.get_adjacent_cells(chosen):
                 if i not in stepped and i not in queue:
                     queue.append(i)
+
+        if not self._perfect:
+            self.not_perfect()
 
     def solve_maze(self) -> None:
         queue: list[CellPath] = []
