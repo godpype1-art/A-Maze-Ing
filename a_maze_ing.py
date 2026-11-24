@@ -1,5 +1,5 @@
 import sys
-from mazegen import Parser, ParserError, MazeGenerator
+from mazegen import Parser, ParserError, MazeGenerator, Display
 
 
 def main() -> None:
@@ -41,6 +41,8 @@ def main() -> None:
             parser._seed
         )
         maze_gen.execute()
+        display: Display = Display(maze_gen.get_grid(), parser._width, parser._height, maze_gen.get_solution())
+        display.display_loop()
 
 
 if __name__ == "__main__":

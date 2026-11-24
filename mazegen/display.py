@@ -90,14 +90,14 @@ class Display:
                 # Verificar the cell_x ou cell_y tem 42flag OU sem cell_x
                 # tem parede a norte e cell_y tem parede a sul
                 if (
-                    cell_x.fix_cell or cell_y.fix_cell or
-                    (cell_x.walls >> 0 & 1 and cell_y.walls >> 2 & 1)
+                    cell_x._is_42 or cell_y._is_42 or
+                    (cell_x._walls >> 2 & 1 and cell_y._walls >> 0 & 1)
                         ):
                     self.line += self.block_color(Color.WALL)
                 # Verify incoherence
                 elif (
-                    (cell_x.walls >> 0 & cell_y.walls >> 2) and
-                    not (cell_x.walls >> 0 | cell_y.walls >> 2)
+                    (cell_x._walls >> 2 & cell_y._walls >> 0) and
+                    not (cell_x._walls >> 2 | cell_y._walls >> 0)
                         ):
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Open path
@@ -119,15 +119,15 @@ class Display:
             elif j % 2 != 0:
                 row: int = self.display_to_maze(i)
                 col: int = self.display_to_maze(j)
-                cell: Cell = self.grid[int(row)][int(col)]
+                cell: Cell = self.grid[row][col]
                 # Verify if cell is the entry point
-                if cell.entry:
+                if cell._entry:
                     self.line += self.block_color(Color.ENTRY)
                 # Verify if cell is the exit point
-                elif cell.exit:
+                elif cell._exit:
                     self.line += self.block_color(Color.EXIT)
                 # Verify if cell is part of 42 logo
-                elif cell.fix_cell:
+                elif cell._is_42:
                     self.line += self.block_color(Color.FIXCELL)
                 elif self.show_path and cell._location in self.answer:
                     self.line += self.block_color(Color.PATH)
@@ -144,14 +144,14 @@ class Display:
                 # Verificar the cell_x ou cell_y tem 42flag OU
                 # sem cell_x tem parede a este e cell_y tem parede a oeste
                 if (
-                    cell_x.fix_cell or cell_y.fix_cell or
-                    (cell_x.walls >> 1 & 1 and cell_y.walls >> 3 & 1)
+                    cell_x._is_42 or cell_y._is_42 or
+                    (cell_x._walls >> 1 & 1 and cell_y._walls >> 3 & 1)
                         ):
                     self.line += self.block_color(Color.WALL)
                 # Verify incoherence
                 elif (
-                    (cell_x.walls >> 1 & cell_y.walls >> 3) and
-                    not (cell_x.walls >> 1 | cell_y.walls >> 3)
+                    (cell_x._walls >> 1 & cell_y._walls >> 3) and
+                    not (cell_x._walls >> 1 | cell_y._walls >> 3)
                         ):
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Else, the path is open

@@ -74,6 +74,9 @@ class Cell():
     def is_entry(self) -> bool:
         return self._entry
 
+    def get_walls(self) -> int:
+        return self._walls
+
 
 class CellPath():
     _size: int = 0
@@ -130,6 +133,7 @@ class MazeGenerator():
     _seed: int = -1
     _maze_random: random.Random = random.Random()
     _grid: list[list[Cell]] = []
+    _answer: CellPath = CellPath(Cell(0, 0))
 
     def __init__(
             self,
@@ -153,17 +157,19 @@ class MazeGenerator():
             self._maze_random: random.Random = random.Random(seed)
 
         self._grid: list[list[Cell]] = []
-        self._answer: CellPath | None = None
 
         self.create_grid()
-        self._cell_exit: Cell = self.get_cell(self._exit)
-        self._cell_entry: Cell = self.get_cell(self._entry)
 
     def create_grid(self) -> None:
         for i in range(self._height):
             row: list[Cell] = []
             for j in range(self._width):
-                row.append(Cell(j, i))
+                cell: Cell = Cell(j, i)
+                if (j, i) == self._entry:
+                    cell._entry = True
+                elif (j, i) == self._exit:
+                    cell._exit = True
+                row.append(cell)
             self._grid.append(row)
 
     def not_perfect(self) -> None:
@@ -172,9 +178,11 @@ class MazeGenerator():
                 if block.number_of_walls() == 3:
                     if block.is_forty_two():
                         continue
-                    possible: Cell = self._maze_random.choice(
-                        self.get_possible_cells(block))
-                    self.remove_wall(block, possible)
+
+                    possibles: list[Cell] = self.get_not_possible_cells(block)
+                    if len(possibles) != 0:
+                        possible: Cell = self._maze_random.choice(possibles)
+                        self.remove_wall(block, possible)
 
     def is_ouside(self, pos: tuple[int, int]) -> bool:
         if pos[0] < 0 or pos[1] < 0:
@@ -198,6 +206,10 @@ class MazeGenerator():
     def get_possible_cells(self, cell: Cell) -> list[Cell]:
         return [c for c in self.get_adjacent_cells(cell) if
                 not cell.check_wall(c)]
+
+    def get_not_possible_cells(self, cell: Cell) -> list[Cell]:
+        return [c for c in self.get_adjacent_cells(cell) if
+                cell.check_wall(c)]
 
     def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
         cel1.remove_wall(cel2)
@@ -224,13 +236,16 @@ class MazeGenerator():
                 if i not in stepped and i not in queue:
                     queue.append(i)
 
-        if not self._perfect:
-            self.not_perfect()
+    def get_grid(self) -> list[list[Cell]]:
+        return self._grid
+
+    def get_solution(self) -> CellPath:
+        return self._answer
 
     def solve_maze(self) -> None:
         queue: list[CellPath] = []
         stepped: set[Cell] = set()
-        queue.append(CellPath(self._cell_entry))
+        queue.append(CellPath(self.get_cell(self._entry)))
 
         while len(queue) > 0:
             chosen: CellPath = queue[0]
@@ -240,11 +255,12 @@ class MazeGenerator():
             stepped.add(chosen.get_head())
 
             for i in self.get_possible_cells(chosen_head):
-                if i == self._cell_exit:
+                if i._exit:
                     self._answer = chosen.branch(i)
-                    break
+                    return
                 if i not in stepped:
                     queue.append(chosen.branch(i))
+                    stepped.add(i)
 
     def save_as_file(self) -> None:
         with open(self._output_file, "w") as file:
@@ -263,6 +279,10 @@ class MazeGenerator():
 
     def execute(self) -> None:
         self.generate_maze()
+
+        if not self._perfect:
+            self.not_perfect()
+
         self.solve_maze()
         self.save_as_file()
 
