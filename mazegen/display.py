@@ -1,4 +1,4 @@
-from .maze_generator import Cell, MazeGenerator
+from .maze_generator import Cell, MazeGenerator, CellPath
 from .exceptions import MazeConfigError
 from enum import Enum
 from typing import Any
@@ -16,14 +16,14 @@ OPTIONS: dict[int, str] = {
     4: "Exit program"
 }
 
-
+# 3 color palletes
 class Color(list[str], Enum):
-    ENTRY = ["42", "", ""]  # Green
-    EXIT = ["41", "", ""]  # Red
-    WALL = ["47", "", ""]  # White
-    OPEN = ["40", "", ""]  # Black
-    PATH = ["46", "", ""]  # Cyan
-    FIXCELL = ["44", "", ""]  # Blue
+    ENTRY   = ["42", "48;5;46", "48;5;46"]    # Green
+    EXIT    = ["41", "48;5;196", "48;5;196"]   # Red
+    WALL    = ["47", "48;5;61", "48;5;240"]   # White / Slate Blue / Dark Grey
+    OPEN    = ["40", "48;5;234", "48;5;255"]   # Black / Near Black / Near White
+    PATH    = ["46", "48;5;220", "48;5;214"]   # Cyan / Gold / Orange
+    FIXCELL = ["44", "48;5;133", "48;5;93"]    # Blue / Orchid / Purple
 
 
 class Display:
@@ -50,10 +50,20 @@ class Display:
         self.show_path: bool = False
 
         # The solution to the maze (as the CellPath class)
-        self.answer: Any = answer
+        self.answer: CellPath = answer
+
+        # The solution path
+        self.path: list[tuple[int, int]] = []
 
         # The string to print the output with
-        self.line: str | None = None
+        self.line: str = ""
+
+    # Calculates the solution coordinates
+    def cell_path(self) -> None:
+
+        while self.answer:
+            self.path.append(self.answer._head._location)
+            self.answer = self.answer._rest
 
     # Calculates the color scheme to print
     def block_color(self, color: list[str]) -> str:
@@ -68,15 +78,12 @@ class Display:
         return int(index * 2 + 1)
 
     # Draws wall line
-    def draw_wall(self, i: int) -> str | None:
+    def draw_wall(self, i: int) -> str:
 
         for j in range(0, self.width):
             # Verify 1st or last line, first or last line block
             if i == 0 or i == self.height - 1 or j == 0 or j == self.width - 1:
-                if self.line:
-                    self.line += self.block_color(Color.WALL)
-                else:
-                    self.line = self.block_color(Color.WALL)
+                self.line += self.block_color(Color.WALL)
             # Vereify corners
             elif j % 2 == 0:
                 self.line += self.block_color(Color.WALL)
@@ -88,7 +95,7 @@ class Display:
                 cell_x: Cell = self.grid[ix][col]
                 cell_y: Cell = self.grid[iy][col]
                 # Verificar the cell_x ou cell_y tem 42flag OU sem cell_x
-                # tem parede a norte e cell_y tem parede a sul
+                # tem parede a sul e cell_y tem parede a norte
                 if (
                     cell_x._is_42 or cell_y._is_42 or
                     (cell_x._walls >> 2 & 1 and cell_y._walls >> 0 & 1)
@@ -102,19 +109,19 @@ class Display:
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Open path
                 else:
-                    self.line += self.block_color(Color.OPEN)
+                    if (cell_x._location in self.path and cell_y._location in self.path) and self.show_path:
+                        self.line += self.block_color(Color.PATH)
+                    else:
+                        self.line += self.block_color(Color.OPEN)
         return self.line
 
     # Draws cell line
-    def draw_path(self, i: int) -> str | None:
+    def draw_path(self, i: int) -> str:
 
         for j in range(0, self.width):
             # Verify 1st or last line block
             if j == 0 or j == self.width - 1:
-                if self.line:
-                    self.line += self.block_color(Color.WALL)
-                else:
-                    self.line = self.block_color(Color.WALL)
+                self.line += self.block_color(Color.WALL)
             # Verify cell block itself
             elif j % 2 != 0:
                 row: int = self.display_to_maze(i)
@@ -129,7 +136,7 @@ class Display:
                 # Verify if cell is part of 42 logo
                 elif cell._is_42:
                     self.line += self.block_color(Color.FIXCELL)
-                elif self.show_path and cell._location in self.answer:
+                elif self.show_path and cell._location in self.path:
                     self.line += self.block_color(Color.PATH)
                 # Else, the path is open
                 else:
@@ -156,15 +163,17 @@ class Display:
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Else, the path is open
                 else:
-                    self.line += self.block_color(Color.OPEN)
+                    if (cell_x._location in self.path and cell_y._location in self.path) and self.show_path:
+                        self.line += self.block_color(Color.PATH)
+                    else:
+                        self.line += self.block_color(Color.OPEN)
         return self.line
 
     # Displays the maze
     def draw_maze(self) -> None:
 
         for i in range(0, self.height):
-            self.line = None
-            # Add here clock function to recreate animation for the bonus
+            self.line = ""
             if i % 2 == 0:
                 print(f"{self.draw_wall(i)}")
             elif i % 2 != 0:
@@ -193,7 +202,10 @@ class Display:
                     subprocess.run("clear")
                     self.draw_maze()
                 elif option == "2":
-                    self.show_path = True
+                    if self.show_path:
+                        self.show_path = False
+                    else:
+                        self.show_path = True
                     subprocess.run("clear")
                     self.draw_maze()
                 elif option == "3":
@@ -216,8 +228,7 @@ def main() -> None:
             10, 10, (3, 3), (9, 9), "", False, None
             )
         maze.create_grid()
-        maze.alter_maze()
-        display: Display = Display(maze.grid, maze._width, maze._height, None)
+        display: Display = Display(maze._grid, maze._width, maze._height, None)
         display.display_loop()
 
     except Exception as error:

@@ -22,4 +22,4 @@ build-backend = "uv_build"
 module-root = ""
 
 [tool.uv.sources]
-mlx = { path = "lib/mlx-2.5-py3-none-any.whl" }
+
