@@ -1,5 +1,6 @@
 import random
 from typing import Any
+from .exceptions import MazeConfigError
 
 
 NORTH: int = 1 << 0
@@ -7,6 +8,7 @@ EAST: int = 1 << 1
 SOUTH: int = 1 << 2
 WEST: int = 1 << 3
 
+forty_two_pattern: list[tuple[int, int]] = [(0,0), (0,1), (0,2), (1,2), (2,2), (2,3), (2,4), (4,0), (5,0), (6,0), (6,1), (6,2), (5,2), (4,2), (4,3), (4,4), (5,4), (6,4)]
 
 class Cell():
     _location: tuple[int, int] = (0, 0)
@@ -71,8 +73,14 @@ class Cell():
     def is_forty_two(self) -> bool:
         return self._is_42
 
+    def set_forty_two(self, valu: bool) -> None:
+        self._is_42 = valu
+
     def is_entry(self) -> bool:
         return self._entry
+
+    def is_exit(self) -> bool:
+        return self._exit
 
     def get_walls(self) -> int:
         return self._walls
@@ -159,6 +167,7 @@ class MazeGenerator():
         self._grid: list[list[Cell]] = []
 
         self.create_grid()
+        self.draw42()
 
     def create_grid(self) -> None:
         for i in range(self._height):
@@ -171,6 +180,19 @@ class MazeGenerator():
                     cell._exit = True
                 row.append(cell)
             self._grid.append(row)
+
+    def draw42(self) -> None:
+        if self._width < 9 or self._height < 7:
+            raise MazeConfigError("The 42 pattern isn't possible to draw, the dimensions are too small")
+
+        yy: int = (self._height // 2) - 2
+        xx: int = (self._width // 2) - 3
+
+        for point in forty_two_pattern:
+            cell: Cell = self.get_cell((point[0] + xx, point[1] + yy))
+            if cell.is_entry() or cell.is_exit():
+                raise MazeConfigError("The 42 pattern collides with the exit and entry.")
+            cell.set_forty_two(True)
 
     def not_perfect(self) -> None:
         for line in self._grid:
@@ -224,10 +246,14 @@ class MazeGenerator():
             chosen: Cell = random.choice(queue)
             queue.remove(chosen)
 
+            if chosen.is_forty_two():
+                stepped.add(chosen)
+                continue
+
             if len(stepped) > 0:
                 wall: Cell = self._maze_random.choice([
                     cell for cell in self.get_adjacent_cells(chosen) if
-                    cell in stepped])
+                    cell in stepped and not cell.is_forty_two()])
                 self.remove_wall(chosen, wall)
 
             stepped.add(chosen)
