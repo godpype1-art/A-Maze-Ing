@@ -42,6 +42,9 @@ def main() -> None:
         )
         maze_gen.execute()
         display: Display = Display(maze_gen.get_grid(), parser._width, parser._height, maze_gen.get_solution())
+        print(f"ANSWER = {display.answer}")
+        display.cell_path()
+        print(f"LIST = {display.path}")
         display.display_loop()
 
 
