@@ -12,34 +12,34 @@ class Parser():
     ``_entry``, ...).
     """
 
-    _maze_config = {}
+    _maze_config: dict[str, str] = {}
     """Raw key/value pairs read from the config file."""
 
-    _missing = []
+    _missing: list[str] = []
     """Mandatory keys that are absent from the config file."""
 
-    _width = -1
+    _width: int = -1
     """Maze width, in cells."""
 
-    _height = -1
+    _height: int = -1
     """Maze height, in cells."""
 
-    _entry = ()
+    _entry: tuple[int, int]
     """Maze entry point, as an ``(x, y)`` tuple."""
 
-    _exit = ()
+    _exit: tuple[int, int]
     """Maze exit point, as an ``(x, y)`` tuple."""
 
-    _output_file = ""
+    _output_file: str = ""
     """Name of the file the maze is saved to."""
 
-    _perfect = False
+    _perfect: bool = False
     """Whether the maze must have a single solution."""
 
-    _seed = None
+    _seed: int | None = None
     """Seed for the maze generation, if the config gives one."""
 
-    _parameters = [
+    _parameters: list[str] = [
         "WIDTH",
         "HEIGHT",
         "ENTRY",
@@ -56,12 +56,12 @@ class Parser():
         self._missing: list[str] = []
         self._width: int = -1
         self._height: int = -1
-        self._entry: tuple[int, int] = ()
-        self._exit: tuple[int, int] = ()
+        self._entry: tuple[int, int]
+        self._exit: tuple[int, int]
         self._output_file: str = ""
         self._perfect: bool = False
         self._seed: int | None = None
-        self._parameters: set = [
+        self._parameters: set[str] = [
             "WIDTH",
             "HEIGHT",
             "ENTRY",
@@ -70,7 +70,6 @@ class Parser():
             "PERFECT",
             "SEED"
         ]
-
 
     def parsing(self, filename: str) -> None:
         """Read ``filename`` and store its ``KEY=VALUE`` pairs.
@@ -101,13 +100,22 @@ class Parser():
                         data: list[str] = line.split("=", 1)
                         data[0], data[1] = data[0].strip(), data[1].strip()
                         if len(data) != 2:
-                            raise ParserError(f"[LINE {i}] Key=Value pair is in the wrong format")
+                            raise ParserError(
+                                f"[LINE {i}] Key=Value pair "
+                                "is in the wrong format"
+                                )
                         if not data[0].strip() or not data[1].strip():
-                            raise ParserError(f"[LINE {i}] It must be in a Key=Value pair")
+                            raise ParserError(
+                                f"[LINE {i}] It must be in a Key=Value pair"
+                                )
                         if data[0] in self._maze_config.keys():
-                            raise ParserError(f"[LINE {i}] Parameter duplicated - discarding")
+                            raise ParserError(
+                                f"[LINE {i}] Parameter duplicated - discarding"
+                                )
                         if data[0] not in self._parameters:
-                            raise ParserError(f"[LINE {i}] Unknown KEY read - discarding")
+                            raise ParserError(
+                                f"[LINE {i}] Unknown KEY read - discarding"
+                                )
                         if data[0] in "PERFECT":
                             data[1] = data[1].lower()
                             if data[1] in ["true", "false"]:
@@ -116,14 +124,16 @@ class Parser():
                                 else:
                                     self._perfect = False
                             else:
-                                raise ParserError(f"[LINE {i}] Wrong config for 'PERFECT' parameter")
+                                raise ParserError(
+                                    f"[LINE {i}] Wrong config for "
+                                    "'PERFECT' parameter"
+                                    )
                         self._maze_config[data[0]] = data[1]
                     except ParserError as error:
                         print(error)
                     except Exception as error:
                         print(f"[LINE {i}] GOT UNEXPECTED EXCEPTION: {error}")
                         sys.exit(1)
-
 
     def set_data(self) -> None:
         """Convert the parsed strings into typed attributes.
@@ -154,8 +164,7 @@ class Parser():
         self._exit = (int(x), int(y))
         self._output_file = self._maze_config["OUTPUT_FILE"]
         if "SEED" in self._maze_config.keys():
-            self._seed = self._maze_config["SEED"]
-
+            self._seed = int(self._maze_config["SEED"])
 
     def verify_missing(self) -> None:
         """Record the mandatory config keys that are missing.
@@ -169,7 +178,6 @@ class Parser():
             if param not in self._maze_config.keys():
                 self._missing.append(param)
 
-
     def verify_atributes(self) -> None:
         """Check that the entry and exit points are usable.
 
@@ -181,15 +189,19 @@ class Parser():
         """
 
         if self._entry == self._exit:
-            raise MazeConfigError("The entry and exit points can't be the same")
+            raise MazeConfigError(
+                "The entry and exit points can't be the same"
+                )
         x1, y1 = self._entry
         x2, y2 = self._exit
         if x1 > self._width or x2 > self._width:
-            raise MazeConfigError("The entry and exit points need to be within maze boundaries")
+            raise MazeConfigError(
+                "The entry and exit points need to be within maze boundaries"
+                )
         if y1 > self._height or y2 > self._height:
-            raise MazeConfigError("The entry and exit points need to be within maze boundaries")
-
-
+            raise MazeConfigError(
+                "The entry and exit points need to be within maze boundaries"
+                )
 
     def show(self) -> None:
         """Print the parsed configuration to stdout."""

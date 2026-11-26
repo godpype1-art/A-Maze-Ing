@@ -1,4 +1,4 @@
-from .maze_generator import Cell, CellPath
+from .maze_generator import Cell
 from .exceptions import MazeConfigError
 from enum import Enum
 from typing import Any
@@ -15,18 +15,18 @@ OPTIONS: dict[int, str] = {
 }
 
 
-class Color(list[str], Enum):
+class Color(Enum):
     """ANSI background codes for each cell type, one per palette.
 
     Every member holds three codes, selected with ``Display.color``:
     the basic 8-color code, a 256-color palette and an alternative
     256-color palette. A code goes between ``ESC[`` and ``m``.
     """
-    ENTRY   = ["42", "48;5;46", "48;5;46"]    # Green
-    EXIT    = ["41", "48;5;196", "48;5;196"]   # Red
-    WALL    = ["47", "48;5;61", "48;5;240"]   # White / Slate Blue / Dark Grey
-    OPEN    = ["40", "48;5;234", "48;5;255"]   # Black / Near Black / Near White
-    PATH    = ["46", "48;5;220", "48;5;214"]   # Cyan / Gold / Orange
+    ENTRY = ["42", "48;5;46", "48;5;46"]    # Green
+    EXIT = ["41", "48;5;196", "48;5;196"]   # Red
+    WALL = ["47", "48;5;61", "48;5;240"]   # White / Slate Blue / Dark Grey
+    OPEN = ["40", "48;5;234", "48;5;255"]   # Black / Near Black / Near White
+    PATH = ["46", "48;5;220", "48;5;214"]   # Cyan / Gold / Orange
     FIXCELL = ["44", "48;5;133", "48;5;93"]    # Blue / Orchid / Purple
 
 
@@ -72,7 +72,7 @@ class Display:
         self.show_path: bool = False
 
         # The solution to the maze (as the CellPath class)
-        self.answer: CellPath = answer
+        self.answer: Any | None = answer
 
         # The solution path
         self.path: list[tuple[int, int]] = []
@@ -91,13 +91,13 @@ class Display:
             self.path.append(self.answer._head._location)
             self.answer = self.answer._rest
 
-    def block_color(self, color: list[str]) -> str:
+    def block_color(self, color: Color) -> str:
         """Return one maze block painted with the active palette.
 
         Parameters
         ----------
-        color : list[str]
-            A ``Color`` member, indexed with ``self.color``.
+        color : Color
+            A ``Color`` member, whose value is indexed with ``self.color``.
 
         Returns
         -------
@@ -105,7 +105,7 @@ class Display:
             ``MAZE_BLOCK`` wrapped between the ANSI background code and
             the reset code.
         """
-        return (f"\033[{color[self.color]}m{MAZE_BLOCK}\033[0m")
+        return (f"\033[{color.value[self.color]}m{MAZE_BLOCK}\033[0m")
 
     def display_to_maze(self, index: int) -> int:
         """Convert a display index into a maze grid index.
@@ -173,7 +173,12 @@ class Display:
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Open path
                 else:
-                    if (cell_x._location in self.path and cell_y._location in self.path) and self.show_path:
+                    if (
+                        (
+                            cell_x._location in self.path and
+                            cell_y._location in self.path
+                            ) and self.show_path
+                            ):
                         self.line += self.block_color(Color.PATH)
                     else:
                         self.line += self.block_color(Color.OPEN)
@@ -228,7 +233,7 @@ class Display:
                     self.line += self.block_color(Color.OPEN)
             # Verify wall
             elif j % 2 == 0:
-                row: int = self.display_to_maze(i)
+                row = self.display_to_maze(i)
                 jx: int = self.display_to_maze(j - 1)
                 jy: int = self.display_to_maze(j + 1)
                 cell_x: Cell = self.grid[row][jx]
@@ -248,7 +253,12 @@ class Display:
                     raise MazeConfigError("Cell wall incoherence detected")
                 # Else, the path is open
                 else:
-                    if (cell_x._location in self.path and cell_y._location in self.path) and self.show_path:
+                    if (
+                        (
+                            cell_x._location in self.path and
+                            cell_y._location in self.path
+                            ) and self.show_path
+                            ):
                         self.line += self.block_color(Color.PATH)
                     else:
                         self.line += self.block_color(Color.OPEN)
@@ -264,7 +274,7 @@ class Display:
             elif i % 2 != 0:
                 print(f"{self.draw_path(i)}")
 
-    def alter_color(self):
+    def alter_color(self) -> None:
         """Switch to the next color palette.
 
         After the last palette it goes back to the first one.
@@ -280,4 +290,3 @@ class Display:
         print("=== A-maze-ing ===")
         for key, value in OPTIONS.items():
             print(f"{key}. {value}")
-

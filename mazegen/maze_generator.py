@@ -10,13 +10,14 @@ WEST: int = 1 << 3
 
 
 FORTY_TWO: list[tuple[int, int]] = [
-    (0,0), (0,1), (0,2),
-    (1,2), (2,2), (2,3),
-    (2,4), (4,0), (5,0),
-    (6,0), (6,1), (6,2),
-    (5,2), (4,2), (4,3),
-    (4,4), (5,4), (6,4)
+    (0, 0), (0, 1), (0, 2),
+    (1, 2), (2, 2), (2, 3),
+    (2, 4), (4, 0), (5, 0),
+    (6, 0), (6, 1), (6, 2),
+    (5, 2), (4, 2), (4, 3),
+    (4, 4), (5, 4), (6, 4)
     ]
+
 
 class Cell():
     """A maze cell whose walls are kept as a bitmask.
@@ -110,13 +111,15 @@ class Cell():
         """
         return hex(self._walls).removeprefix("0x")
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return the cell as text, for example ``Cell(2, 3)``."""
         return f"Cell{self._location}"
 
     def number_of_walls(self) -> int:
         """Return how many of the four walls the cell has."""
-        return sum([1 for dir in [NORTH, WEST, EAST, SOUTH] if self.check_walls(dir)])
+        return sum(
+            [1 for dir in [NORTH, WEST, EAST, SOUTH] if self.check_walls(dir)]
+            )
 
     def is_forty_two(self) -> bool:
         """Return True if the cell belongs to the 42 pattern."""
@@ -190,7 +193,7 @@ class CellPath():
         """Return the last cell of the path."""
         return self._head
 
-    def get_head_direction(self) -> int:
+    def get_head_direction(self) -> Any:
         """Return the direction flag of the move that reached the head.
 
         Return 0 for the first cell of the path, which has no previous
@@ -275,7 +278,7 @@ class MazeGenerator():
         self._exit: tuple[int, int] = exit
         self._output_file: str = output
         self._perfect: bool = perfect
-        _answer: CellPath | None = None
+        self._answer: CellPath | None = None
 
         if seed is not None:
             self._seed = seed
@@ -319,7 +322,10 @@ class MazeGenerator():
             covers the entry or the exit.
         """
         if self._width < 9 or self._height < 7:
-            raise MazeConfigError("The 42 pattern isn't possible to draw, the dimensions are too small")
+            raise MazeConfigError(
+                "The 42 pattern isn't possible to draw, "
+                "the dimensions are too small"
+                )
 
         yy: int = (self._height // 2) - 2
         xx: int = (self._width // 2) - 3
@@ -327,7 +333,9 @@ class MazeGenerator():
         for point in FORTY_TWO:
             cell: Cell = self.get_cell((point[0] + xx, point[1] + yy))
             if cell.is_entry() or cell.is_exit():
-                raise MazeConfigError("The 42 pattern collides with the exit and entry.")
+                raise MazeConfigError(
+                    "The 42 pattern collides with the exit and entry."
+                    )
             cell.set_forty_two(True)
 
     def not_perfect(self) -> None:
@@ -426,7 +434,7 @@ class MazeGenerator():
         """Return the cell grid, as a list of rows."""
         return self._grid
 
-    def get_solution(self) -> CellPath:
+    def get_solution(self) -> CellPath | None:
         """Return the solution found by ``solve_maze``, or None before it."""
         return self._answer
 
