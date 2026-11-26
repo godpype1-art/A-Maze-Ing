@@ -2,4 +2,4 @@
 __pycache__
 *egg-info
 dist
-display_old.py
+.mypy_cache

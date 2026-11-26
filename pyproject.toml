@@ -4,7 +4,6 @@ version = "1.0.0"
 description = "A maze generator"
 requires-python = ">=3.10"
 dependencies = [
-    "mlx",
 ]
 
 [dependency-groups]

@@ -1,23 +1,27 @@
-from .maze_generator import Cell, MazeGenerator, CellPath
+from .maze_generator import Cell, CellPath
 from .exceptions import MazeConfigError
 from enum import Enum
 from typing import Any
-import subprocess
-import sys
 
 
 MAZE_BLOCK: str = "  "
 
 
 OPTIONS: dict[int, str] = {
-    1: "Regenerate maze",
+    1: "Re-generate maze",
     2: "Show/Hide solution",
     3: "Alternate maze colors",
     4: "Exit program"
 }
 
-# 3 color palletes
+
 class Color(list[str], Enum):
+    """ANSI background codes for each cell type, one per palette.
+
+    Every member holds three codes, selected with ``Display.color``:
+    the basic 8-color code, a 256-color palette and an alternative
+    256-color palette. A code goes between ``ESC[`` and ``m``.
+    """
     ENTRY   = ["42", "48;5;46", "48;5;46"]    # Green
     EXIT    = ["41", "48;5;196", "48;5;196"]   # Red
     WALL    = ["47", "48;5;61", "48;5;240"]   # White / Slate Blue / Dark Grey
@@ -27,12 +31,30 @@ class Color(list[str], Enum):
 
 
 class Display:
+    """Draw a maze in the terminal and run an interactive menu.
 
-    # answer is the CellPath object with the solution to highlight
+    The maze is drawn on a block grid of ``2 * width + 1`` columns by
+    ``2 * height + 1`` rows. Odd positions hold the cells and even
+    positions hold the walls between them, plus the outer border.
+    """
+
     def __init__(
             self, maze_grid: list[list[Cell]],
             maze_width: int, maze_height: int, answer: Any
             ) -> None:
+        """Store the maze data needed to draw it.
+
+        Parameters
+        ----------
+        maze_grid : list[list[Cell]]
+            Cell grid of the ``MazeGenerator``.
+        maze_width : int
+            Maze width, in cells.
+        maze_height : int
+            Maze height, in cells.
+        answer : CellPath or None
+            Solution to highlight, or ``None`` when there is none.
+        """
 
         # Color palete from the Color Enum
         self.color: int = 0
@@ -60,26 +82,68 @@ class Display:
 
     # Calculates the solution coordinates
     def cell_path(self) -> None:
+        """Fill ``self.path`` with the locations of the solution cells.
 
+        The ``answer`` chain is walked from the exit back to the entry,
+        so it is consumed: ``self.answer`` ends up as ``None``.
+        """
         while self.answer:
             self.path.append(self.answer._head._location)
             self.answer = self.answer._rest
 
-    # Calculates the color scheme to print
     def block_color(self, color: list[str]) -> str:
+        """Return one maze block painted with the active palette.
+
+        Parameters
+        ----------
+        color : list[str]
+            A ``Color`` member, indexed with ``self.color``.
+
+        Returns
+        -------
+        str
+            ``MAZE_BLOCK`` wrapped between the ANSI background code and
+            the reset code.
+        """
         return (f"\033[{color[self.color]}m{MAZE_BLOCK}\033[0m")
 
-    # Converts the display index to maze_grid index
     def display_to_maze(self, index: int) -> int:
+        """Convert a display index into a maze grid index.
+
+        It is meant for the odd indices, which are the cell positions.
+        """
         return int((index - 1) / 2)
 
-    # Converts the maze_grid index to display index
     def maze_to_display(self, index: int) -> int:
+        """Convert a maze grid index into a display index.
+
+        The result is the odd index where the cell is drawn.
+        """
         return int(index * 2 + 1)
 
-    # Draws wall line
     def draw_wall(self, i: int) -> str:
+        """Build the display row ``i`` made of borders and horizontal walls.
 
+        It is used for the even rows. The blocks are appended to
+        ``self.line``, which is then returned. A block is a wall, an open
+        passage, or part of the solution path when it is shown.
+
+        Parameters
+        ----------
+        i : int
+            Display row index (even).
+
+        Returns
+        -------
+        str
+            The painted row, ready to print.
+
+        Raises
+        ------
+        MazeConfigError
+            If two neighbouring cells disagree about the wall between
+            them.
+        """
         for j in range(0, self.width):
             # Verify 1st or last line, first or last line block
             if i == 0 or i == self.height - 1 or j == 0 or j == self.width - 1:
@@ -94,8 +158,8 @@ class Display:
                 iy: int = self.display_to_maze(i + 1)
                 cell_x: Cell = self.grid[ix][col]
                 cell_y: Cell = self.grid[iy][col]
-                # Verificar the cell_x ou cell_y tem 42flag OU sem cell_x
-                # tem parede a sul e cell_y tem parede a norte
+                # Verify if the cell_x or cell_y have 42flag or if cell_x
+                # has south wall and cell_y north wall
                 if (
                     cell_x._is_42 or cell_y._is_42 or
                     (cell_x._walls >> 2 & 1 and cell_y._walls >> 0 & 1)
@@ -115,9 +179,30 @@ class Display:
                         self.line += self.block_color(Color.OPEN)
         return self.line
 
-    # Draws cell line
     def draw_path(self, i: int) -> str:
+        """Build the display row ``i`` made of cells and vertical walls.
 
+        It is used for the odd rows. Each cell is painted by its role
+        (entry, exit, 42 logo, solution path or open), and between two
+        cells there is a wall or an open passage. The blocks are appended
+        to ``self.line``, which is then returned.
+
+        Parameters
+        ----------
+        i : int
+            Display row index (odd).
+
+        Returns
+        -------
+        str
+            The painted row, ready to print.
+
+        Raises
+        ------
+        MazeConfigError
+            If two neighbouring cells disagree about the wall between
+            them.
+        """
         for j in range(0, self.width):
             # Verify 1st or last line block
             if j == 0 or j == self.width - 1:
@@ -148,8 +233,8 @@ class Display:
                 jy: int = self.display_to_maze(j + 1)
                 cell_x: Cell = self.grid[row][jx]
                 cell_y: Cell = self.grid[row][jy]
-                # Verificar the cell_x ou cell_y tem 42flag OU
-                # sem cell_x tem parede a este e cell_y tem parede a oeste
+                # Verify if the cell_x or cell_y have 42flag or
+                # if cell_x has east wall e cell_y has west wall
                 if (
                     cell_x._is_42 or cell_y._is_42 or
                     (cell_x._walls >> 1 & 1 and cell_y._walls >> 3 & 1)
@@ -169,8 +254,8 @@ class Display:
                         self.line += self.block_color(Color.OPEN)
         return self.line
 
-    # Displays the maze
     def draw_maze(self) -> None:
+        """Print the whole maze, one display row at a time."""
 
         for i in range(0, self.height):
             self.line = ""
@@ -180,60 +265,19 @@ class Display:
                 print(f"{self.draw_path(i)}")
 
     def alter_color(self):
+        """Switch to the next color palette.
+
+        After the last palette it goes back to the first one.
+        """
 
         self.color += 1
         if self.color == 3:
             self.color = 0
 
     def display_menu(self) -> None:
+        """Print the numbered menu options."""
 
-        print()
+        print("=== A-maze-ing ===")
         for key, value in OPTIONS.items():
             print(f"{key}. {value}")
 
-    def display_loop(self) -> None:
-
-        self.draw_maze()
-        while True:
-            try:
-                self.display_menu()
-                option: str = input("Select option:").strip()
-                if option == "1":
-                    subprocess.run("clear")
-                    self.draw_maze()
-                elif option == "2":
-                    if self.show_path:
-                        self.show_path = False
-                    else:
-                        self.show_path = True
-                    subprocess.run("clear")
-                    self.draw_maze()
-                elif option == "3":
-                    self.alter_color()
-                    subprocess.run("clear")
-                    self.draw_maze()
-                elif option == "4":
-                    sys.exit()
-                else:
-                    subprocess.run("clear")
-                    self.draw_maze()
-                    print("Only 4 options man...")
-            except (Exception, KeyboardInterrupt) as error:
-                print(f"Exception found: {error}")
-
-
-def main() -> None:
-    try:
-        maze: MazeGenerator = MazeGenerator(
-            10, 10, (3, 3), (9, 9), "", False, None
-            )
-        maze.create_grid()
-        display: Display = Display(maze._grid, maze._width, maze._height, None)
-        display.display_loop()
-
-    except Exception as error:
-        print(f"Exception found: {error}")
-
-
-if __name__ == "__main__":
-    main()

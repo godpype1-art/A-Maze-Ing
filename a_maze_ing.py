@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from mazegen import Parser, ParserError, MazeGenerator, Display
 
 
@@ -16,11 +17,13 @@ def main() -> None:
             parser.verify_missing()
             if not parser._missing:
                 parser.set_data()
-                parser.show()
                 parser.verify_atributes()
             else:
                 parser.show()
-                raise ParserError(f"The following configurations are missing: {parser._missing}")
+                raise ParserError(
+                    "The following configurations "
+                    f"are missing: {parser._missing}"
+                    )
     except ParserError as error:
         print(f"Got exception: {error}")
         sys.exit(1)
@@ -29,23 +32,75 @@ def main() -> None:
         sys.exit(1)
     except Exception as error:
         print(f"GOT UNEXPECTED EXCEPTION: {error}")
-        sys.exit(1) 
+        sys.exit(1)
     else:
-        maze_gen = MazeGenerator(
-            parser._width,
-            parser._height,
-            parser._entry,
-            parser._exit,
-            parser._output_file,
-            parser._perfect,
-            parser._seed
-        )
-        maze_gen.execute()
-        display: Display = Display(maze_gen.get_grid(), parser._width, parser._height, maze_gen.get_solution())
-        print(f"ANSWER = {display.answer}")
-        display.cell_path()
-        print(f"LIST = {display.path}")
-        display.display_loop()
+        try:
+            maze_gen = MazeGenerator(
+                parser._width,
+                parser._height,
+                parser._entry,
+                parser._exit,
+                parser._output_file,
+                parser._perfect,
+                parser._seed
+            )
+            maze_gen.execute()
+            display = Display(
+                maze_gen.get_grid(),
+                parser._width,
+                parser._height,
+                maze_gen.get_solution()
+                )
+            display.cell_path()
+            display.draw_maze()
+        except Exception as error:
+            print(f"Got Exception: {error}")
+            sys.exit(1)
+        else:
+            while True:
+                try:
+                    display.display_menu()
+                    option: str = input("Select option:").strip()
+                    if option == "1":
+                        subprocess.run("clear")
+                        del display, maze_gen
+                        maze_gen = MazeGenerator(
+                            parser._width,
+                            parser._height,
+                            parser._entry,
+                            parser._exit,
+                            parser._output_file,
+                            parser._perfect,
+                            parser._seed
+                        )
+                        maze_gen.execute()
+                        display = Display(
+                            maze_gen.get_grid(),
+                            parser._width,
+                            parser._height,
+                            maze_gen.get_solution()
+                            )
+                        display.cell_path()
+                        display.draw_maze()
+                    elif option == "2":
+                        if display.show_path:
+                            display.show_path = False
+                        else:
+                            display.show_path = True
+                        subprocess.run("clear")
+                        display.draw_maze()
+                    elif option == "3":
+                        display.alter_color()
+                        subprocess.run("clear")
+                        display.draw_maze()
+                    elif option == "4":
+                        sys.exit()
+                    else:
+                        subprocess.run("clear")
+                        display.draw_maze()
+                        print("Only 4 options man...")
+                except (Exception, KeyboardInterrupt) as error:
+                    print(f"Exception found: {error}")
 
 
 if __name__ == "__main__":
