@@ -9,9 +9,9 @@
 # PERFECT is a boolean determined if the maze has 1 or multiple solutions (if PERFECT == True -> 1 solution)
 # 
 # aditional parameters are allowed if relevant
-WIDTH=9
-HEIGHT=7
+WIDTH=25
+HEIGHT=34
 ENTRY=8,6
 EXIT=0,1
 OUTPUT_FILE=maze.txt
-PERFECT=False
+PERFECT=True
