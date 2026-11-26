@@ -28,7 +28,7 @@ lint-strict: #(optional)
 
 # builds the package
 build:
-	uv build
+	uv build --out-dir .
 
 
 .PHONY: run install debug clean lint lint-strict build
