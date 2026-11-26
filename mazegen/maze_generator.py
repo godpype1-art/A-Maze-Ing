@@ -231,7 +231,7 @@ class MazeGenerator():
 
     def get_not_possible_cells(self, cell: Cell) -> list[Cell]:
         return [c for c in self.get_adjacent_cells(cell) if
-                cell.check_wall(c)]
+                cell.check_wall(c) and not c.is_forty_two()]
 
     def remove_wall(self, cel1: Cell, cel2: Cell) -> None:
         cel1.remove_wall(cel2)
@@ -267,6 +267,14 @@ class MazeGenerator():
 
     def get_solution(self) -> CellPath:
         return self._answer
+
+    def insure_middle_42_free(self) -> None:
+        yy: int = (self._height // 2) - 1
+        xx: int = (self._width // 2)
+
+        for hei in range(4):
+            cell: Cell = self.get_cell((xx, yy + hei))
+            cell.remove_walls(NORTH | SOUTH)
 
     def solve_maze(self) -> None:
         queue: list[CellPath] = []
@@ -305,6 +313,7 @@ class MazeGenerator():
 
     def execute(self) -> None:
         self.generate_maze()
+        self.insure_middle_42_free()
 
         if not self._perfect:
             self.not_perfect()
